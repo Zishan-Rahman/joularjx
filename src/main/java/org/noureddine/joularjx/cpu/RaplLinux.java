@@ -138,7 +138,7 @@ public class RaplLinux implements Cpu {
             try {
                 energyData += Double.parseDouble(Files.readString(raplFile));
             } catch (IOException exception) {
-                logger.throwing(getClass().getName(), "getCurrentPower", exception);
+                logger.log(Level.SEVERE, "Failed to read one of RAPL files: " + raplFile, exception);
             }
         }
 
