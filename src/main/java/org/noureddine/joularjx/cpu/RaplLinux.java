@@ -79,48 +79,57 @@ public class RaplLinux implements Cpu {
         final Path psysFile = fileSystem.getPath(RAPL_PSYS);
         final Path psysMaxFile = fileSystem.getPath(RAPL_PSYS_MAX);
         if (Files.exists(psysFile)) {
-            checkFileReadable(psysFile);
-            checkFileReadable(psysMaxFile);
             // psys exists, so use this for energy readings
-            raplFilesToRead.add(psysFile);
-            maxRaplFilesToRead.add(psysMaxFile);
+            if (Files.isReadable(psysFile)) {
+                raplFilesToRead.add(psysFile);
+                if (Files.isReadable(psysMaxFile)) {
+                    maxRaplFilesToRead.add(psysMaxFile);
+                } else {
+                    logger.log(Level.SEVERE, "Failed to get read" + psysMaxFile + " file. Exiting... Did you run JoularJX with elevated privileges (sudo)?");
+                    System.exit(1);
+                }
+            } else {
+                logger.log(Level.SEVERE, "Failed to get RAPL energy readings from" + psysFile + " file. Exiting... Did you run JoularJX with elevated privileges (sudo)?");
+                System.exit(1);
+            }
         } else {
             // No psys supported, then check for pkg and dram
             final Path pkgFile = fileSystem.getPath(RAPL_PKG);
             final Path pkgMaxFile = fileSystem.getPath(RAPL_PKG_MAX);
             if (Files.exists(pkgFile)) {
-                checkFileReadable(pkgFile);
-                checkFileReadable(pkgMaxFile);
-                // pkg exists, check also for dram
-                raplFilesToRead.add(pkgFile);
-                maxRaplFilesToRead.add(pkgMaxFile);
+                if (Files.isReadable(pkgFile)) {
+                    raplFilesToRead.add(pkgFile);
+                    if (Files.isReadable(pkgMaxFile)) {
+                        maxRaplFilesToRead.add(pkgMaxFile);
+                    } else {
+                        logger.log(Level.SEVERE, "Failed to get read" + pkgMaxFile + " file. Exiting... Did you run JoularJX with elevated privileges (sudo)?");
+                        System.exit(1);
+                    }
+                } else {
+                    logger.log(Level.SEVERE, "Failed to get RAPL energy readings from" + pkgFile + " file. Exiting... Did you run JoularJX with elevated privileges (sudo)?");
+                    System.exit(1);
+                }
 
                 final Path dramFile = fileSystem.getPath(RAPL_DRAM);
                 final Path dramMaxFile = fileSystem.getPath(RAPL_DRAM_MAX);
                 if (Files.exists(dramFile)) {
-                    checkFileReadable(dramFile);
-                    checkFileReadable(dramMaxFile);
-                    // dram and pkg exists, then get sum of both
-                    raplFilesToRead.add(dramFile);
-                    maxRaplFilesToRead.add(dramMaxFile);
+                    if (Files.isReadable(dramFile)) {
+                        raplFilesToRead.add(dramFile);
+                        if (Files.isReadable(dramMaxFile)) {
+                            maxRaplFilesToRead.add(dramMaxFile);
+                        } else {
+                            logger.log(Level.SEVERE, "Failed to get read" + dramMaxFile + " file. Exiting... Did you run JoularJX with elevated privileges (sudo)?");
+                            System.exit(1);
+                        }
+                    } else {
+                        logger.log(Level.WARNING, "Failed to get RAPL energy readings from" + dramFile + " file. Continuing without it.");
+                    }
                 }
             }
         }
 
         if (raplFilesToRead.isEmpty()) {
             logger.log(Level.SEVERE, "Found no RAPL files to read the energy measurement from. Exit ...");
-            System.exit(1);
-        }
-    }
-
-    /**
-     * Check that the passed file can be read by the program. Log error message and exit if reading the file is not
-     * possible.
-     * @param file the file to check the read access
-     */
-    private void checkFileReadable(final Path file) {
-        if (!Files.isReadable(file)) {
-            logger.log(Level.SEVERE, "Failed to get RAPL energy readings. Did you run JoularJX with elevated privileges (sudo)?");
             System.exit(1);
         }
     }
@@ -138,7 +147,7 @@ public class RaplLinux implements Cpu {
             try {
                 energyData += Double.parseDouble(Files.readString(raplFile));
             } catch (IOException exception) {
-                logger.log(Level.SEVERE, "Failed to read one of RAPL files: " + raplFile, exception);
+                logger.throwing(getClass().getName(), "getCurrentPower", exception);
             }
         }
 
